@@ -7,22 +7,28 @@
 
 package frc.robot;
 
+import java.util.List;
+
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PIDController;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.XboxController.Button;
 import edu.wpi.first.wpilibj.controller.RamseteController;
 import edu.wpi.first.wpilibj.controller.SimpleMotorFeedforward;
+import edu.wpi.first.wpilibj.geometry.Pose2d;
+import edu.wpi.first.wpilibj.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.geometry.Translation2d;
 import edu.wpi.first.wpilibj.trajectory.Trajectory;
 import edu.wpi.first.wpilibj.trajectory.TrajectoryConfig;
+import edu.wpi.first.wpilibj.trajectory.TrajectoryGenerator;
 import edu.wpi.first.wpilibj.trajectory.constraint.DifferentialDriveVoltageConstraint;
 import frc.robot.Constants.DrivetrainConstants;
 import frc.robot.Constants.JoystickConstants;
-import frc.robot.commands.ExampleCommand;
 import frc.robot.commands.RunHopper;
 import frc.robot.commands.RunIntake;
 import frc.robot.commands.RunShooter;
-import frc.robot.subsystems.ExampleSubsystem;
+import frc.robot.subsystems.Drivetrain;
 import frc.robot.subsystems.HopperSubsystem;
 import frc.robot.subsystems.IntakeSubsystem;
 import frc.robot.subsystems.ShooterSubsystem;
@@ -39,13 +45,12 @@ import edu.wpi.first.wpilibj2.command.button.JoystickButton;
  */
 public class RobotContainer {
   // The robot's subsystems and commands are defined here...
-  private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
   private final IntakeSubsystem m_intake = new IntakeSubsystem();
   private final ShooterSubsystem m_shooter = new ShooterSubsystem();
   private final HopperSubsystem m_hopper = new HopperSubsystem();
-  private final ExampleCommand m_autoCommand = new ExampleCommand(m_exampleSubsystem);
+  private final Drivetrain m_drive = new Drivetrain();
 
-  private Joystick m_driverController = new Joystick(JoystickConstants.kDriverControllerPort);
+  private final Joystick m_driverController = new Joystick(JoystickConstants.kDriverControllerPort);
   
   /**
    * The container for the robot.  Contains subsystems, OI devices, and commands.
@@ -53,6 +58,8 @@ public class RobotContainer {
   public RobotContainer() {
     // Configure the button bindings
     configureButtonBindings();
+    m_drive.setDefaultCommand(
+        (Command) new Joystick(m_drive, () -> -m_driverController.getRawAxis(1), () -> m_driverController.getRawAxis(0)));
   }
 
   /**
@@ -67,12 +74,9 @@ public class RobotContainer {
     new JoystickButton(m_driverController, 2).whileHeld(new RunShooter(m_shooter, 0.6));
     new JoystickButton(m_driverController, 3).whileHeld(new RunHopper(m_hopper, 0.6));
     new JoystickButton(m_driverController, 3).whileHeld(new RunHopper(m_hopper, -0.6));
-    new JoystickButton(m_driverController, Button.kA.value)
-        .whenPressed(new InstantCommand(m_shooter::enable, m_shooter));
+    
 
-    // Turn off the shooter when the 'B' button is pressed
-    new JoystickButton(m_driverController, Button.kB.value)
-        .whenPressed(new InstantCommand(m_shooter::disable, m_shooter));
+    // Turn off the shooter when the 'B' button is pressed   
   }
 
 
@@ -84,7 +88,7 @@ public class RobotContainer {
   public Command trajectoryCommand()
   {
     // Create a voltage constraint to ensure we don't accelerate too fast
-    var autoVoltageConstraint =
+    final var autoVoltageConstraint =
         new DifferentialDriveVoltageConstraint(
             new SimpleMotorFeedforward(DrivetrainConstants.ksVolts,
                                        DrivetrainConstants.kvVoltSecondsPerMeter,
@@ -92,7 +96,7 @@ public class RobotContainer {
             DrivetrainConstants.kDriveKinematics,
             10);
   
-   TrajectoryConfig config =
+   final TrajectoryConfig config =
       new TrajectoryConfig(DrivetrainConstants.kMaxSpeedMetersPerSecond,
         DrivetrainConstants.kMaxAccelerationMetersPerSecondSquared)
         // Add kinematics to ensure max speed is actually obeyed
@@ -100,7 +104,7 @@ public class RobotContainer {
         // Apply the voltage constraint
         .addConstraint(autoVoltageConstraint);
 
-    TrajectoryConfig configReversed =
+    final TrajectoryConfig configReversed =
         new TrajectoryConfig(DrivetrainConstants.kMaxSpeedMetersPerSecond,
           DrivetrainConstants.kMaxAccelerationMetersPerSecondSquared)
           // Add kinematics to ensure max speed is actually obeyed
@@ -110,7 +114,7 @@ public class RobotContainer {
 
     configReversed.setReversed(true);
 
-    Trajectory exampleTrajectory = TrajectoryGenerator.generateTrajectory(
+    final Trajectory exampleTrajectory = TrajectoryGenerator.generateTrajectory(
         // Start at the origin facing the +X direction
         new Pose2d(0, 0, new Rotation2d(0)),
         // Pass through these two interior waypoints, making an 's' curve path
@@ -124,8 +128,8 @@ public class RobotContainer {
         config
     );
 
-    Object m_drive;
-    RamseteCommand ramseteCommand = new RamseteCommand(
+    final Object m_drive;
+    final RamseteCommand ramseteCommand = new RamseteCommand(
         exampleTrajectory,
         m_drive::getPose,
         new RamseteController(DrivetrainConstants.kRamseteB, DrivetrainConstants.kRamseteZeta),
@@ -137,13 +141,14 @@ public class RobotContainer {
         new PIDController(DrivetrainConstants.kPDriveVel, 0, 0, 0, null, null),
         new PIDController(DrivetrainConstants.kPDriveVel, 0, 0, 0, null, null),
         // RamseteCommand passes volts to the callback
-        m_drive::tankDriveVolts,
+        m_drive::arcadeDriveVolts,
         m_drive
     );
 
-    return ramseteCommand.andThen( () -> m_drive.tankDriveVolts(0, 0) );
+    return ramseteCommand.andThen( () -> ((Object) m_drive).arcadeDriveVolts(0, 0) );
   }
   public Command getAutonomousCommand() {
+    final Command m_autoCommand;
     // An ExampleCommand will run in autonomous
     return m_autoCommand;
   }

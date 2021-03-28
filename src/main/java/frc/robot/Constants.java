@@ -42,6 +42,11 @@ public final class Constants {
         public static final int kRearRightMotorPort = 7;
         public static final int kRearLeftMotorPort = 8;
 
+        public static final int leftEncoderPort1 = 1;
+        public static final int leftEncoderPort2 = 2;
+        public static final int rightEncoderPort1 = 3;
+        public static final int rightEncoderPort2 = 4;
+
         public static final double turnP = 1.0;
         public static final double turnI = 0.0;
         public static final double turnD = 0.0;
@@ -67,6 +72,8 @@ public final class Constants {
         // Reasonable baseline values for a RAMSETE follower in units of meters and seconds
         public static final double kRamseteB = 2;
         public static final double kRamseteZeta = 0.7;
+
+
         
     }
 

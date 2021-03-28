@@ -7,6 +7,8 @@
 
 package frc.robot.commands;
 
+import java.util.function.DoubleSupplier;
+
 import edu.wpi.first.wpilibj2.command.CommandBase;
 import frc.robot.subsystems.Drivetrain;
 
@@ -16,9 +18,14 @@ public class DrivetrainCommand extends CommandBase {
    * Creates a new DrivetrainCommand.
    */
   private final Drivetrain m_drive;
-  public DrivetrainCommand(Drivetrain drive) {
+  private final DoubleSupplier m_forward;
+  private final DoubleSupplier m_rotation;
+  
+  public DrivetrainCommand(Drivetrain drive, DoubleSupplier forward, DoubleSupplier rotation) {
     // Use addRequirements() here to declare subsystem dependencies.
     m_drive = drive;
+    m_forward = forward;
+    m_rotation = rotation;
     addRequirements(m_drive);
   }
 
@@ -30,7 +37,7 @@ public class DrivetrainCommand extends CommandBase {
   // Called every time the scheduler runs while the command is scheduled.
   @Override
   public void execute() {
-    m_drive.arcadeDrive(linearSpeed, angularSpeed); //? bunun nasıl yapılması lazımdı?
+    m_drive.arcadeDrive(m_forward.getAsDouble(), m_rotation.getAsDouble()); //? bunun nasıl yapılması lazımdı?
   }
 
   // Called once the command ends or is interrupted.
